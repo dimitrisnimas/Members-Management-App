@@ -47,11 +47,7 @@ const approveUser = async (req, res) => {
         const user = result.rows[0];
 
         // Send email
-        await emailService.sendEmail(
-            user.email,
-            'Account Approved - Members App',
-            `<h2>Account Approved</h2><p>Hello ${user.first_name} ${user.last_name},</p><p>Your account has been approved. You can now log in.</p>`
-        );
+        await emailService.sendApprovalEmail(user);
 
         // Log action
         await query(
@@ -81,11 +77,7 @@ const denyUser = async (req, res) => {
         const user = result.rows[0];
 
         // Send email
-        await emailService.sendEmail(
-            user.email,
-            'Account Update - Members App',
-            `<h2>Account Update</h2><p>Hello ${user.first_name} ${user.last_name},</p><p>Your account application has been denied.</p>`
-        );
+        await emailService.sendDenialEmail(user);
 
         // Log action
         await query(
