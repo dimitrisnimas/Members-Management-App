@@ -2,8 +2,6 @@
 
 A comprehensive full-stack application for managing organization members, subscriptions, and payments. This system replaces legacy WordPress plugins with a modern, scalable, and secure solution built with the MERN stack (PostgreSQL variant).
 
-![Dashboard Preview](https://via.placeholder.com/800x400?text=Dashboard+Preview)
-
 ## 🚀 Key Features
 
 ### 👥 Member Management
