@@ -1,4 +1,4 @@
-# Membership Management System
+# Membership Management System - In Progress
 
 A comprehensive full-stack application for managing organization members, subscriptions, and payments. This system replaces legacy WordPress plugins with a modern, scalable, and secure solution built with the MERN stack (PostgreSQL variant).
 
