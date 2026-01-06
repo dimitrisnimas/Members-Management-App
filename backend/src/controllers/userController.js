@@ -112,10 +112,96 @@ const getUserHistory = async (req, res) => {
     }
 };
 
+const updateUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { first_name, last_name, fathers_name, id_number, email, phone, address, member_type } = req.body;
+
+        const result = await query(
+            `UPDATE users SET first_name = $1, last_name = $2, fathers_name = $3, id_number = $4, 
+             email = $5, phone = $6, address = $7, member_type = $8, updated_at = NOW() 
+             WHERE id = $9 RETURNING *`,
+            [first_name, last_name, fathers_name, id_number, email, phone, address, member_type, id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Log the update
+        const actionLogger = require('../services/actionLogger');
+        await actionLogger.logAction({
+            userId: id,
+            actionType: 'member_update',
+            actionDescription: 'Member information updated',
+            performedBy: req.user.id
+        });
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Update user error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+const deleteUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Get user info before deletion for logging
+        const user = await query('SELECT * FROM users WHERE id = $1', [id]);
+        if (user.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Delete related data first (subscriptions, payments, action history)
+        await query('DELETE FROM subscriptions WHERE user_id = $1', [id]);
+        await query('DELETE FROM payments WHERE user_id = $1', [id]);
+        await query('DELETE FROM action_history WHERE user_id = $1', [id]);
+
+        // Delete the user
+        await query('DELETE FROM users WHERE id = $1', [id]);
+
+        // Log the deletion
+        const actionLogger = require('../services/actionLogger');
+        await actionLogger.logAction({
+            userId: req.user.id, // Log under admin's ID since user is deleted
+            actionType: 'member_deletion',
+            actionDescription: `Deleted member: ${user.rows[0].first_name} ${user.rows[0].last_name}`,
+            performedBy: req.user.id,
+            metadata: { deleted_user_id: id }
+        });
+
+        res.json({ message: 'User deleted successfully' });
+    } catch (error) {
+        console.error('Delete user error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+const getExpiringMembers = async (req, res) => {
+    try {
+        const result = await query(
+            `SELECT * FROM users 
+             WHERE member_type = 'Τακτικό' 
+             AND status = 'approved'
+             AND created_at + INTERVAL '1 year' BETWEEN NOW() AND NOW() + INTERVAL '30 days'
+             ORDER BY created_at ASC`
+        );
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Get expiring members error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
 module.exports = {
     getAllUsers,
     getUserById,
     approveUser,
     denyUser,
-    getUserHistory
+    getUserHistory,
+    updateUser,
+    deleteUser,
+    getExpiringMembers
 };
