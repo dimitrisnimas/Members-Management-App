@@ -78,9 +78,68 @@ const handleStripeWebhook = async (req, res) => {
     res.json({ received: true });
 };
 
+const addManualPayment = async (req, res) => {
+    try {
+        const { user_id, amount, payment_date, payment_method, notes, duration_months } = req.body;
+
+        // Start transaction
+        const client = await query('BEGIN');
+
+        try {
+            // Create subscription
+            const startDate = new Date(payment_date);
+            const endDate = new Date(startDate);
+            endDate.setMonth(endDate.getMonth() + duration_months);
+
+            const subscriptionResult = await query(
+                `INSERT INTO subscriptions 
+                (user_id, member_type, start_date, end_date, duration_months, status) 
+                VALUES ($1, 'Τακτικό', $2, $3, $4, 'active') 
+                RETURNING *`,
+                [user_id, startDate, endDate, duration_months]
+            );
+
+            const subscription = subscriptionResult.rows[0];
+
+            // Record payment
+            const paymentResult = await query(
+                `INSERT INTO payments 
+                (user_id, subscription_id, amount, payment_method, payment_status, payment_date, notes) 
+                VALUES ($1, $2, $3, $4, 'completed', $5, $6) 
+                RETURNING *`,
+                [user_id, subscription.id, amount, payment_method, payment_date, notes]
+            );
+
+            // Update user member_type to Τακτικό
+            await query(
+                `UPDATE users SET member_type = 'Τακτικό', updated_at = NOW() WHERE id = $1`,
+                [user_id]
+            );
+
+            // Log action
+            const actionLogger = require('../services/actionLogger');
+            await actionLogger.logPayment(user_id, req.user.id, amount, subscription.id);
+
+            await query('COMMIT');
+
+            res.status(201).json({
+                payment: paymentResult.rows[0],
+                subscription: subscription
+            });
+        } catch (error) {
+            await query('ROLLBACK');
+            throw error;
+        }
+    } catch (error) {
+        console.error('Add manual payment error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
 module.exports = {
     getUserPayments,
     recordPayment,
     createStripeIntent,
-    handleStripeWebhook
+    handleStripeWebhook,
+    addManualPayment
 };
