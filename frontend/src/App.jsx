@@ -4,20 +4,14 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import AllMembers from './pages/AllMembers';
+import ExpiringMembers from './pages/ExpiringMembers';
+import Statistics from './pages/Statistics';
+import ActivityLogs from './pages/ActivityLogs';
+import AdminTools from './pages/AdminTools';
+import ExportPDF from './pages/ExportPDF';
 import UserProfile from './pages/UserProfile';
 import MemberDetail from './pages/MemberDetail';
-import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
-
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-  },
-});
 
 const PrivateRoute = ({ children, roles }) => {
   const { user, loading } = useAuth();
@@ -37,44 +31,91 @@ const PrivateRoute = ({ children, roles }) => {
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <Router>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
-            <Route
-              path="/admin/dashboard"
-              element={
-                <PrivateRoute roles={['superadmin']}>
-                  <SuperAdminDashboard />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin/members/:id"
-              element={
-                <PrivateRoute roles={['superadmin']}>
-                  <MemberDetail />
-                </PrivateRoute>
-              }
-            />
+          {/* Admin Routes */}
+          <Route
+            path="/admin/dashboard"
+            element={
+              <PrivateRoute roles={['superadmin']}>
+                <SuperAdminDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/members"
+            element={
+              <PrivateRoute roles={['superadmin']}>
+                <AllMembers />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/expiring"
+            element={
+              <PrivateRoute roles={['superadmin']}>
+                <ExpiringMembers />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/statistics"
+            element={
+              <PrivateRoute roles={['superadmin']}>
+                <Statistics />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/logs"
+            element={
+              <PrivateRoute roles={['superadmin']}>
+                <ActivityLogs />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/tools"
+            element={
+              <PrivateRoute roles={['superadmin']}>
+                <AdminTools />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/export"
+            element={
+              <PrivateRoute roles={['superadmin']}>
+                <ExportPDF />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/members/:id"
+            element={
+              <PrivateRoute roles={['superadmin']}>
+                <MemberDetail />
+              </PrivateRoute>
+            }
+          />
 
-            <Route
-              path="/profile"
-              element={
-                <PrivateRoute roles={['user', 'superadmin']}>
-                  <UserProfile />
-                </PrivateRoute>
-              }
-            />
-          </Routes>
-        </Router>
-      </AuthProvider>
-    </ThemeProvider>
+          {/* User Routes */}
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute roles={['user', 'superadmin']}>
+                <UserProfile />
+              </PrivateRoute>
+            }
+          />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
