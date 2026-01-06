@@ -11,6 +11,7 @@ router.use(authenticateToken);
 
 router.get('/user/:userId', paymentController.getUserPayments);
 router.post('/', requireRole(['superadmin']), paymentController.recordPayment);
+router.post('/manual', requireRole(['superadmin']), paymentController.addManualPayment);
 router.post('/create-intent', paymentController.createStripeIntent);
 
 module.exports = router;
