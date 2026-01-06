@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Container, Typography, TextField, Button, Box, Alert, Paper, MenuItem } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -44,140 +43,173 @@ const RegisterPage = () => {
 
     if (success) {
         return (
-            <Container maxWidth="sm">
-                <Box sx={{ mt: 8 }}>
-                    <Alert severity="success">
-                        Registration successful! Your account is pending approval. You will receive an email once approved.
-                    </Alert>
-                    <Button onClick={() => navigate('/')} sx={{ mt: 2 }}>
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
+                <div className="max-w-md w-full">
+                    <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                        <p className="font-medium">Registration successful!</p>
+                        <p className="text-sm mt-1">Your account is pending approval. You will receive an email once approved.</p>
+                    </div>
+                    <button
+                        onClick={() => navigate('/')}
+                        className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+                    >
                         Return to Home
-                    </Button>
-                </Box>
-            </Container>
+                    </button>
+                </div>
+            </div>
         );
     }
 
     return (
-        <Container maxWidth="sm">
-            <Box sx={{ mt: 8, mb: 4 }}>
-                <Paper elevation={3} sx={{ p: 4 }}>
-                    <Typography variant="h4" component="h1" align="center" gutterBottom>
+        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mx-auto">
+                <div className="bg-white shadow-md rounded-lg p-8">
+                    <h2 className="text-3xl font-bold text-center text-gray-900 mb-6">
                         Register
-                    </Typography>
-                    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-                    <form onSubmit={handleSubmit}>
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                            <TextField
-                                label="First Name"
-                                name="first_name"
-                                fullWidth
-                                margin="normal"
-                                value={formData.first_name}
-                                onChange={handleChange}
+                    </h2>
+
+                    {error && (
+                        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                            {error}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* Name Fields */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">First Name *</label>
+                                <input
+                                    type="text"
+                                    name="first_name"
+                                    required
+                                    value={formData.first_name}
+                                    onChange={handleChange}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Last Name *</label>
+                                <input
+                                    type="text"
+                                    name="last_name"
+                                    required
+                                    value={formData.last_name}
+                                    onChange={handleChange}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Father's Name *</label>
+                                <input
+                                    type="text"
+                                    name="fathers_name"
+                                    required
+                                    value={formData.fathers_name}
+                                    onChange={handleChange}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">ID Number</label>
+                                <input
+                                    type="text"
+                                    name="id_number"
+                                    value={formData.id_number}
+                                    onChange={handleChange}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Contact Fields */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Email *</label>
+                            <input
+                                type="email"
+                                name="email"
                                 required
-                            />
-                            <TextField
-                                label="Last Name"
-                                name="last_name"
-                                fullWidth
-                                margin="normal"
-                                value={formData.last_name}
+                                value={formData.email}
                                 onChange={handleChange}
-                                required
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                             />
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                            <TextField
-                                label="Father's Name"
-                                name="fathers_name"
-                                fullWidth
-                                margin="normal"
-                                value={formData.fathers_name}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Phone</label>
+                            <input
+                                type="tel"
+                                name="phone"
+                                value={formData.phone}
                                 onChange={handleChange}
-                                required
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                             />
-                            <TextField
-                                label="ID Number"
-                                name="id_number"
-                                fullWidth
-                                margin="normal"
-                                value={formData.id_number}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Address</label>
+                            <textarea
+                                name="address"
+                                rows="2"
+                                value={formData.address}
                                 onChange={handleChange}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                             />
-                        </Box>
-                        <TextField
-                            label="Email"
-                            name="email"
-                            type="email"
-                            fullWidth
-                            margin="normal"
-                            value={formData.email}
-                            onChange={handleChange}
-                            required
-                        />
-                        <TextField
-                            label="Phone"
-                            name="phone"
-                            fullWidth
-                            margin="normal"
-                            value={formData.phone}
-                            onChange={handleChange}
-                        />
-                        <TextField
-                            label="Address"
-                            name="address"
-                            fullWidth
-                            margin="normal"
-                            value={formData.address}
-                            onChange={handleChange}
-                            multiline
-                            rows={2}
-                        />
-                        <TextField
-                            select
-                            label="Member Type"
-                            name="member_type"
-                            fullWidth
-                            margin="normal"
-                            value={formData.member_type}
-                            onChange={handleChange}
-                        >
-                            <MenuItem value="Τακτικό">Τακτικό</MenuItem>
-                            <MenuItem value="Υποστηρικτής">Υποστηρικτής</MenuItem>
-                        </TextField>
-                        <TextField
-                            label="Password"
-                            name="password"
-                            type="password"
-                            fullWidth
-                            margin="normal"
-                            value={formData.password}
-                            onChange={handleChange}
-                            required
-                        />
-                        <TextField
-                            label="Confirm Password"
-                            name="confirmPassword"
-                            type="password"
-                            fullWidth
-                            margin="normal"
-                            value={formData.confirmPassword}
-                            onChange={handleChange}
-                            required
-                        />
-                        <Button
+                        </div>
+
+                        {/* Member Type */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Member Type</label>
+                            <select
+                                name="member_type"
+                                value={formData.member_type}
+                                onChange={handleChange}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            >
+                                <option value="Τακτικό">Τακτικό</option>
+                                <option value="Υποστηρικτής">Υποστηρικτής</option>
+                            </select>
+                        </div>
+
+                        {/* Password Fields */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Password *</label>
+                                <input
+                                    type="password"
+                                    name="password"
+                                    required
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Confirm Password *</label>
+                                <input
+                                    type="password"
+                                    name="confirmPassword"
+                                    required
+                                    value={formData.confirmPassword}
+                                    onChange={handleChange}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
+                        </div>
+
+                        <button
                             type="submit"
-                            fullWidth
-                            variant="contained"
-                            size="large"
-                            sx={{ mt: 3 }}
+                            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                         >
                             Register
-                        </Button>
+                        </button>
                     </form>
-                </Paper>
-            </Box>
-        </Container>
+                </div>
+            </div>
+        </div>
     );
 };
 
