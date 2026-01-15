@@ -19,9 +19,10 @@ const findUserByEmail = async (email) => {
 };
 
 const findUserById = async (id) => {
-    const sql = 'SELECT id, email, first_name, last_name, fathers_name, id_number, phone, address, role, status, member_type, created_at FROM users WHERE id = $1';
+    const sql = 'SELECT * FROM users WHERE id = $1';
     const result = await query(sql, [id]);
     return result.rows[0];
+    // Remove password_hash if needed, but normally handled in controller
 };
 
 module.exports = {
