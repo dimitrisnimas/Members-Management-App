@@ -32,6 +32,19 @@ const MemberDetail = () => {
     const [newRole, setNewRole] = useState('');
     const [changingRole, setChangingRole] = useState(false);
 
+    // Edit Profile State
+    const [openEditDialog, setOpenEditDialog] = useState(false);
+    const [editForm, setEditForm] = useState({
+        first_name: '',
+        last_name: '',
+        fathers_name: '',
+        id_number: '',
+        email: '',
+        phone: '',
+        address: ''
+    });
+    const [savingEdit, setSavingEdit] = useState(false);
+
     // Notification state
     const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
 
@@ -132,6 +145,39 @@ const MemberDetail = () => {
         setOpenRoleDialog(true);
     };
 
+    const handleEditClick = () => {
+        setEditForm({
+            first_name: member.first_name || '',
+            last_name: member.last_name || '',
+            fathers_name: member.fathers_name || '',
+            id_number: member.id_number || '',
+            email: member.email || '',
+            phone: member.phone || '',
+            address: member.address || '',
+            member_type: member.member_type // Preserve member type
+        });
+        setOpenEditDialog(true);
+    };
+
+    const handleEditSubmit = async () => {
+        try {
+            setSavingEdit(true);
+            const res = await api.put(`/users/${id}`, editForm);
+            setMember(res.data); // Update local state
+            setNotification({ open: true, message: 'Profile updated successfully!', severity: 'success' });
+            setOpenEditDialog(false);
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            setNotification({
+                open: true,
+                message: error.response?.data?.message || 'Error updating profile',
+                severity: 'error'
+            });
+        } finally {
+            setSavingEdit(false);
+        }
+    };
+
     if (loading) return <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>;
 
     return (
@@ -144,9 +190,9 @@ const MemberDetail = () => {
                 <Grid item xs={12} md={4}>
                     <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
                         <Typography variant="h6" gutterBottom>Member Details</Typography>
-                        <Typography><strong>Name:</strong> {member?.first_name} {member?.last_name}</Typography>
-                        <Typography><strong>Father's Name:</strong> {member?.fathers_name || 'N/A'}</Typography>
-                        <Typography><strong>ID Number:</strong> {member?.id_number || 'N/A'}</Typography>
+                        <Typography variant="h5" gutterBottom>{member?.first_name} {member?.last_name}</Typography>
+                        <Typography><strong>Father's Name:</strong> {member?.fathers_name || '-'}</Typography>
+                        <Typography><strong>ID Number:</strong> {member?.id_number || '-'}</Typography>
                         <Typography><strong>Email:</strong> {member?.email}</Typography>
                         <Typography><strong>Phone:</strong> {member?.phone || 'N/A'}</Typography>
                         <Typography><strong>Address:</strong> {member?.address || 'N/A'}</Typography>
@@ -167,6 +213,11 @@ const MemberDetail = () => {
                                     {member?.role === 'superadmin' ? 'SuperAdmin' : 'User'}
                                 </Box>
                             </Typography>
+                        </Box>
+                        <Box sx={{ mt: 2 }}>
+                            <Button variant="outlined" size="small" onClick={handleEditClick}>
+                                Edit Details
+                            </Button>
                         </Box>
                     </Paper>
 
@@ -249,7 +300,7 @@ const MemberDetail = () => {
                         >
                             <MenuItem value="bank_transfer">Bank Transfer</MenuItem>
                             <MenuItem value="cash">Cash</MenuItem>
-                            <MenuItem value="check">Check</MenuItem>
+                            <MenuItem value="card">Card</MenuItem>
                             <MenuItem value="other">Other</MenuItem>
                         </TextField>
 
@@ -275,6 +326,67 @@ const MemberDetail = () => {
                         disabled={upgrading}
                     >
                         {upgrading ? 'Processing...' : 'Upgrade Subscription'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Edit Profile Dialog */}
+            <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Edit Member Details</DialogTitle>
+                <DialogContent>
+                    <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <TextField
+                                label="First Name"
+                                fullWidth
+                                value={editForm.first_name}
+                                onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                            />
+                            <TextField
+                                label="Last Name"
+                                fullWidth
+                                value={editForm.last_name}
+                                onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                            />
+                        </Box>
+                        <TextField
+                            label="Father's Name"
+                            fullWidth
+                            value={editForm.fathers_name}
+                            onChange={(e) => setEditForm({ ...editForm, fathers_name: e.target.value })}
+                        />
+                        <TextField
+                            label="ID Number"
+                            fullWidth
+                            value={editForm.id_number}
+                            onChange={(e) => setEditForm({ ...editForm, id_number: e.target.value })}
+                        />
+                        <TextField
+                            label="Email"
+                            fullWidth
+                            value={editForm.email}
+                            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                        />
+                        <TextField
+                            label="Phone"
+                            fullWidth
+                            value={editForm.phone}
+                            onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                        />
+                        <TextField
+                            label="Address"
+                            fullWidth
+                            multiline
+                            rows={2}
+                            value={editForm.address}
+                            onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                        />
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenEditDialog(false)}>Cancel</Button>
+                    <Button onClick={handleEditSubmit} variant="contained" disabled={savingEdit}>
+                        {savingEdit ? 'Saving...' : 'Save Changes'}
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -345,4 +457,3 @@ const MemberDetail = () => {
 };
 
 export default MemberDetail;
-
