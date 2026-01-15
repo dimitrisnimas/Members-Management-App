@@ -79,11 +79,16 @@ const handleStripeWebhook = async (req, res) => {
 };
 
 const addManualPayment = async (req, res) => {
+    let client;
     try {
         const { user_id, amount, payment_date, payment_method, notes, duration_months } = req.body;
 
+        // Get client from pool for transaction
+        const { pool } = require('../config/database');
+        client = await pool.connect();
+
         // Start transaction
-        const client = await query('BEGIN');
+        await client.query('BEGIN');
 
         try {
             // Create subscription
@@ -91,7 +96,7 @@ const addManualPayment = async (req, res) => {
             const endDate = new Date(startDate);
             endDate.setMonth(endDate.getMonth() + duration_months);
 
-            const subscriptionResult = await query(
+            const subscriptionResult = await client.query(
                 `INSERT INTO subscriptions 
                 (user_id, member_type, start_date, end_date, duration_months, status) 
                 VALUES ($1, 'Τακτικό', $2, $3, $4, 'active') 
@@ -102,7 +107,7 @@ const addManualPayment = async (req, res) => {
             const subscription = subscriptionResult.rows[0];
 
             // Record payment
-            const paymentResult = await query(
+            const paymentResult = await client.query(
                 `INSERT INTO payments 
                 (user_id, subscription_id, amount, payment_method, payment_status, payment_date, notes) 
                 VALUES ($1, $2, $3, $4, 'completed', $5, $6) 
@@ -111,28 +116,38 @@ const addManualPayment = async (req, res) => {
             );
 
             // Update user member_type to Τακτικό
-            await query(
+            await client.query(
                 `UPDATE users SET member_type = 'Τακτικό', updated_at = NOW() WHERE id = $1`,
                 [user_id]
             );
 
             // Log action
+            // actionLogger uses default query, which is fine for logging, but to be safe and consistent with transaction
+            // we should probably commit first, then log. Or use client if actionLogger supports it.
+            // Current actionLogger.logPayment likely uses 'query' from database.js (one-off).
+            // This is acceptable as logging doesn't necessarily need to be in the same transaction 
+            // (if we want to log attempts even if failed? No, we want to log success).
+            // So we'll log AFTER commit.
+
+            await client.query('COMMIT');
+
+            // Log action after commit
             const actionLogger = require('../services/actionLogger');
             await actionLogger.logPayment(user_id, req.user.id, amount, subscription.id);
-
-            await query('COMMIT');
 
             res.status(201).json({
                 payment: paymentResult.rows[0],
                 subscription: subscription
             });
         } catch (error) {
-            await query('ROLLBACK');
+            await client.query('ROLLBACK');
             throw error;
         }
     } catch (error) {
         console.error('Add manual payment error:', error);
         res.status(500).json({ message: 'Server error' });
+    } finally {
+        if (client) client.release();
     }
 };
 
