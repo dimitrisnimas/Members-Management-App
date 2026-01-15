@@ -41,8 +41,13 @@ const register = async (req, res) => {
                 email: newUser.email,
                 first_name: newUser.first_name,
                 last_name: newUser.last_name,
+                fathers_name: newUser.fathers_name,
+                id_number: newUser.id_number,
+                phone: newUser.phone,
+                address: newUser.address,
                 role: newUser.role,
-                status: newUser.status
+                status: newUser.status,
+                member_type: newUser.member_type
             }
         });
     } catch (error) {
@@ -86,6 +91,10 @@ const login = async (req, res) => {
                 email: user.email,
                 first_name: user.first_name,
                 last_name: user.last_name,
+                fathers_name: user.fathers_name,
+                id_number: user.id_number,
+                phone: user.phone,
+                address: user.address,
                 role: user.role,
                 status: user.status,
                 member_type: user.member_type
