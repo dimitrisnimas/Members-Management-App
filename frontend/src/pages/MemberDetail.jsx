@@ -57,10 +57,11 @@ const MemberDetail = () => {
     const fetchData = async () => {
         try {
             const [userRes, subRes, payRes] = await Promise.all([
-                api.get(`/users/${id}`),
-                api.get(`/subscriptions/user/${id}`),
-                api.get(`/payments/user/${id}`)
+                api.get(`/users/${id}?t=${new Date().getTime()}`),
+                api.get(`/subscriptions/user/${id}?t=${new Date().getTime()}`),
+                api.get(`/payments/user/${id}?t=${new Date().getTime()}`)
             ]);
+            console.log('Member data fetched:', userRes.data);
 
             setMember(userRes.data);
             setSubscriptions(subRes.data);
@@ -186,6 +187,18 @@ const MemberDetail = () => {
             <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/admin/members')} sx={{ mb: 2 }}>
                 Back to Members
             </Button>
+
+            {/* Debug: Show raw member data at TOP */}
+            <Box sx={{ mb: 2, p: 2, bgcolor: '#fff3cd', borderRadius: 1, overflow: 'auto', border: '1px solid #ffeeba' }}>
+                <Typography variant="caption" sx={{ fontFamily: 'monospace', display: 'block' }}>
+                    <strong>DEBUG INFO:</strong>
+                    <br />ID: {id}
+                    <br />Name: {member?.first_name} {member?.last_name}
+                    <br />Father: {member?.fathers_name}
+                    <br />ID Num: {member?.id_number}
+                    <br />Addr: {member?.address}
+                </Typography>
+            </Box>
 
             <Grid container spacing={3}>
                 <Grid item xs={12} md={4}>
@@ -453,12 +466,7 @@ const MemberDetail = () => {
                     {notification.message}
                 </Alert>
             </Snackbar>
-            {/* Debug: Show raw member data */}
-            <Box sx={{ mt: 4, p: 2, bgcolor: '#f5f5f5', borderRadius: 1, overflow: 'auto' }}>
-                <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-                    DEBUG DATA: {JSON.stringify(member, null, 2)}
-                </Typography>
-            </Box>
+
 
         </Container>
     );
