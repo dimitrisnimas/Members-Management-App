@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Grid, CircularProgress, Button } from '@mui/material';
+import { Container, Typography, Box, Grid, CircularProgress, Button, Paper } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import SubscriptionCard from '../components/SubscriptionCard';
@@ -49,6 +49,40 @@ const UserProfile = () => {
 
             <Grid container spacing={3}>
                 <Grid item xs={12} md={8}>
+                    <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+                        <Typography variant="h6" gutterBottom>Personal Information</Typography>
+                        <Grid container spacing={2}>
+                            <Grid item xs={12} sm={6}>
+                                <Typography variant="subtitle2" color="text.secondary">First Name</Typography>
+                                <Typography variant="body1">{user.first_name}</Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography variant="subtitle2" color="text.secondary">Last Name</Typography>
+                                <Typography variant="body1">{user.last_name}</Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography variant="subtitle2" color="text.secondary">Father's Name</Typography>
+                                <Typography variant="body1">{user.fathers_name || '-'}</Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography variant="subtitle2" color="text.secondary">ID Number</Typography>
+                                <Typography variant="body1">{user.id_number || '-'}</Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography variant="subtitle2" color="text.secondary">Email</Typography>
+                                <Typography variant="body1">{user.email}</Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography variant="subtitle2" color="text.secondary">Phone</Typography>
+                                <Typography variant="body1">{user.phone || '-'}</Typography>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <Typography variant="subtitle2" color="text.secondary">Address</Typography>
+                                <Typography variant="body1">{user.address || '-'}</Typography>
+                            </Grid>
+                        </Grid>
+                    </Paper>
+
                     <SubscriptionCard subscription={subscriptions[0]} />
                     <PaymentHistory payments={payments} />
                     {/* <ActionHistory history={history} userId={user.id} /> */}
