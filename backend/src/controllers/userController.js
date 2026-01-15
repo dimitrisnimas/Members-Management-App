@@ -435,6 +435,99 @@ const findDuplicates = async (req, res) => {
     }
 };
 
+const mergeUsers = async (req, res) => {
+    const client = await require('../config/db').pool.connect();
+    try {
+        const { targetUserId, sourceUserId } = req.body;
+
+        if (!targetUserId || !sourceUserId) {
+            return res.status(400).json({ message: 'Target and source user IDs are required' });
+        }
+
+        if (targetUserId === sourceUserId) {
+            return res.status(400).json({ message: 'Cannot merge a user into themselves' });
+        }
+
+        await client.query('BEGIN');
+
+        // Check users exist
+        const usersCheck = await client.query(
+            'SELECT id, email, first_name, last_name FROM users WHERE id IN ($1, $2)',
+            [targetUserId, sourceUserId]
+        );
+
+        if (usersCheck.rows.length !== 2) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'One or both users not found' });
+        }
+
+        const sourceUser = usersCheck.rows.find(u => u.id === parseInt(sourceUserId));
+        const targetUser = usersCheck.rows.find(u => u.id === parseInt(targetUserId));
+
+        // Transfer Subscriptions
+        await client.query(
+            'UPDATE subscriptions SET user_id = $1 WHERE user_id = $2',
+            [targetUserId, sourceUserId]
+        );
+
+        // Transfer Payments
+        await client.query(
+            'UPDATE payments SET user_id = $1 WHERE user_id = $2',
+            [targetUserId, sourceUserId]
+        );
+
+        // Transfer Action Logs (assuming table name is action_logs)
+        await client.query(
+            'UPDATE action_logs SET user_id = $1 WHERE user_id = $2',
+            [targetUserId, sourceUserId]
+        );
+
+        // Delete Source User
+        await client.query(
+            'DELETE FROM users WHERE id = $1',
+            [sourceUserId]
+        );
+
+        // Log the merge action
+        const actionLogger = require('../services/actionLogger');
+        // We log safely outside the transaction block usually, or inside? 
+        // actionLogger might use its own pool/client. 
+        // Let's insert directly or use valid logger after commit. 
+        // We'll construct a manual log entry reusing the client to ensure atomicity or just log after commit.
+        // For consistency with other functions, we'll log after commit using the service.
+
+        await client.query('COMMIT');
+
+        // Log action (using the service)
+        await actionLogger.logAction({
+            userId: targetUserId,
+            actionType: 'user_merge',
+            actionDescription: `Merged user ${sourceUser.email} (${sourceUser.first_name} ${sourceUser.last_name}) into this account`,
+            performedBy: req.user.id,
+            metadata: {
+                merged_user_id: sourceUserId,
+                merged_user_email: sourceUser.email,
+                merged_user_name: `${sourceUser.first_name} ${sourceUser.last_name}`
+            }
+        });
+
+        res.json({
+            message: 'Users merged successfully',
+            mergedDetails: {
+                target: targetUser.email,
+                source: sourceUser.email
+            }
+        });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Merge users error:', error);
+        res.status(500).json({ message: 'Server error during merge' });
+    } finally {
+        client.release();
+    }
+};
+
 module.exports = {
     getAllUsers,
     getUserById,
@@ -446,5 +539,6 @@ module.exports = {
     getExpiringMembers,
     createMember,
     changeRole,
-    findDuplicates
+    findDuplicates,
+    mergeUsers
 };
