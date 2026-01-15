@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Grid, CircularProgress, Paper, Button, TextField, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Container, Typography, Box, Grid, CircularProgress, Paper, Button, TextField, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Alert, Snackbar } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import SubscriptionCard from '../components/SubscriptionCard';
@@ -16,41 +16,49 @@ const MemberDetail = () => {
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Subscription Dialog State
-    const [openDialog, setOpenDialog] = useState(false);
-    const [subForm, setSubForm] = useState({
+    // Manual Upgrade Dialog State
+    const [openUpgradeDialog, setOpenUpgradeDialog] = useState(false);
+    const [upgradeForm, setUpgradeForm] = useState({
         member_type: 'Τακτικό',
         duration_months: 12,
-        price: 50,
-        start_date: new Date().toISOString().split('T')[0]
+        amount: 500,
+        payment_method: 'bank_transfer',
+        notes: ''
     });
+    const [upgrading, setUpgrading] = useState(false);
+
+    // Notification state
+    const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
+
+    // Pricing map
+    const pricingMap = {
+        'Τακτικό': { 1: 50, 3: 140, 6: 270, 9: 390, 12: 500 },
+        'Υποστηρικτής': { 1: 30, 3: 85, 6: 160, 9: 230, 12: 300 }
+    };
 
     const fetchData = async () => {
         try {
-            const [userRes, subRes, payRes, histRes] = await Promise.all([
+            const [userRes, subRes, payRes] = await Promise.all([
                 api.get(`/users/${id}`),
                 api.get(`/subscriptions/user/${id}`),
-                api.get(`/payments/user/${id}`),
-                api.get(`/export/user/${id}/history`, { responseType: 'json' }).catch(() => ({ data: [] })) // Fallback if export endpoint behaves differently
+                api.get(`/payments/user/${id}`)
             ]);
-
-            // For history, we might need a dedicated JSON endpoint or reuse the export one if it supports JSON
-            // Assuming we added a JSON history endpoint or using the export one differently. 
-            // Actually, let's use the dedicated history endpoint I added to userController but forgot to expose fully?
-            // Wait, I didn't add a dedicated JSON history endpoint in userController, only export.
-            // I should probably add one or just use the export endpoint if I modify it.
-            // Let's assume I'll fix the backend to have a proper history endpoint or I'll use the one I'm about to add.
-            // Correction: I added `GET /api/users/:id/history` in the plan but maybe missed it in code.
-            // Let's check userController.js... I didn't add it. I'll add it now via a quick fix or just fetch it here if I can.
-            // Actually, I'll just fetch it from action_history table if I had an endpoint.
-            // For now, let's skip history fetching or assume it works.
 
             setMember(userRes.data);
             setSubscriptions(subRes.data);
             setPayments(payRes.data);
-            // setHistory(histRes.data); 
+
+            // Fetch history
+            try {
+                const histRes = await api.get(`/users/${id}/history`);
+                setHistory(histRes.data);
+            } catch (err) {
+                console.log('History endpoint not available');
+                setHistory([]);
+            }
         } catch (error) {
             console.error('Error fetching member details:', error);
+            setNotification({ open: true, message: 'Error loading member details', severity: 'error' });
         } finally {
             setLoading(false);
         }
@@ -60,25 +68,47 @@ const MemberDetail = () => {
         fetchData();
     }, [id]);
 
-    const handleCreateSubscription = async () => {
+    // Update amount when member_type or duration changes
+    useEffect(() => {
+        const price = pricingMap[upgradeForm.member_type]?.[upgradeForm.duration_months];
+        if (price) {
+            setUpgradeForm(prev => ({ ...prev, amount: price }));
+        }
+    }, [upgradeForm.member_type, upgradeForm.duration_months]);
+
+    const handleManualUpgrade = async () => {
         try {
-            await api.post('/subscriptions', {
-                user_id: id,
-                ...subForm
-            });
-            setOpenDialog(false);
+            setUpgrading(true);
+            await api.post(`/subscriptions/manual-upgrade/${id}`, upgradeForm);
+            setNotification({ open: true, message: 'Subscription upgraded successfully!', severity: 'success' });
+            setOpenUpgradeDialog(false);
             fetchData();
+            // Reset form
+            setUpgradeForm({
+                member_type: 'Τακτικό',
+                duration_months: 12,
+                amount: 500,
+                payment_method: 'bank_transfer',
+                notes: ''
+            });
         } catch (error) {
-            console.error('Error creating subscription:', error);
+            console.error('Error upgrading subscription:', error);
+            setNotification({
+                open: true,
+                message: error.response?.data?.message || 'Error upgrading subscription',
+                severity: 'error'
+            });
+        } finally {
+            setUpgrading(false);
         }
     };
 
-    if (loading) return <CircularProgress />;
+    if (loading) return <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>;
 
     return (
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-            <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/admin/dashboard')} sx={{ mb: 2 }}>
-                Back to Dashboard
+            <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/admin/members')} sx={{ mb: 2 }}>
+                Back to Members
             </Button>
 
             <Grid container spacing={3}>
@@ -86,17 +116,22 @@ const MemberDetail = () => {
                     <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
                         <Typography variant="h6" gutterBottom>Member Details</Typography>
                         <Typography><strong>Name:</strong> {member?.first_name} {member?.last_name}</Typography>
-                        <Typography><strong>Father's Name:</strong> {member?.fathers_name}</Typography>
-                        <Typography><strong>ID Number:</strong> {member?.id_number}</Typography>
+                        <Typography><strong>Father's Name:</strong> {member?.fathers_name || 'N/A'}</Typography>
+                        <Typography><strong>ID Number:</strong> {member?.id_number || 'N/A'}</Typography>
                         <Typography><strong>Email:</strong> {member?.email}</Typography>
-                        <Typography><strong>Phone:</strong> {member?.phone}</Typography>
-                        <Typography><strong>Address:</strong> {member?.address}</Typography>
-                        <Typography><strong>Type:</strong> {member?.member_type}</Typography>
+                        <Typography><strong>Phone:</strong> {member?.phone || 'N/A'}</Typography>
+                        <Typography><strong>Address:</strong> {member?.address || 'N/A'}</Typography>
+                        <Typography><strong>Type:</strong> {member?.member_type || 'N/A'}</Typography>
                         <Typography><strong>Status:</strong> {member?.status}</Typography>
                     </Paper>
 
-                    <Button variant="contained" fullWidth onClick={() => setOpenDialog(true)}>
-                        Manage Subscription
+                    <Button
+                        variant="contained"
+                        fullWidth
+                        onClick={() => setOpenUpgradeDialog(true)}
+                        sx={{ mb: 2 }}
+                    >
+                        Manual Subscription Upgrade
                     </Button>
                 </Grid>
 
@@ -107,60 +142,106 @@ const MemberDetail = () => {
                 </Grid>
             </Grid>
 
-            {/* Subscription Dialog */}
-            <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-                <DialogTitle>Update Subscription</DialogTitle>
+            {/* Manual Upgrade Dialog */}
+            <Dialog open={openUpgradeDialog} onClose={() => !upgrading && setOpenUpgradeDialog(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Manual Subscription Upgrade</DialogTitle>
                 <DialogContent>
-                    <TextField
-                        select
-                        label="Member Type"
-                        fullWidth
-                        margin="normal"
-                        value={subForm.member_type}
-                        onChange={(e) => setSubForm({ ...subForm, member_type: e.target.value })}
-                    >
-                        <MenuItem value="Τακτικό">Τακτικό</MenuItem>
-                        <MenuItem value="Υποστηρικτής">Υποστηρικτής</MenuItem>
-                    </TextField>
-                    <TextField
-                        select
-                        label="Duration"
-                        fullWidth
-                        margin="normal"
-                        value={subForm.duration_months}
-                        onChange={(e) => setSubForm({ ...subForm, duration_months: e.target.value })}
-                    >
-                        <MenuItem value={1}>1 Month</MenuItem>
-                        <MenuItem value={3}>3 Months</MenuItem>
-                        <MenuItem value={6}>6 Months</MenuItem>
-                        <MenuItem value={9}>9 Months</MenuItem>
-                        <MenuItem value={12}>1 Year</MenuItem>
-                    </TextField>
-                    <TextField
-                        label="Price (€)"
-                        type="number"
-                        fullWidth
-                        margin="normal"
-                        value={subForm.price}
-                        onChange={(e) => setSubForm({ ...subForm, price: e.target.value })}
-                    />
-                    <TextField
-                        label="Start Date"
-                        type="date"
-                        fullWidth
-                        margin="normal"
-                        InputLabelProps={{ shrink: true }}
-                        value={subForm.start_date}
-                        onChange={(e) => setSubForm({ ...subForm, start_date: e.target.value })}
-                    />
+                    <Box sx={{ mt: 1 }}>
+                        <TextField
+                            select
+                            label="Member Type"
+                            fullWidth
+                            margin="normal"
+                            value={upgradeForm.member_type}
+                            onChange={(e) => setUpgradeForm({ ...upgradeForm, member_type: e.target.value })}
+                        >
+                            <MenuItem value="Τακτικό">Τακτικό (Regular)</MenuItem>
+                            <MenuItem value="Υποστηρικτής">Υποστηρικτής (Supporter)</MenuItem>
+                        </TextField>
+
+                        <TextField
+                            select
+                            label="Duration"
+                            fullWidth
+                            margin="normal"
+                            value={upgradeForm.duration_months}
+                            onChange={(e) => setUpgradeForm({ ...upgradeForm, duration_months: parseInt(e.target.value) })}
+                        >
+                            <MenuItem value={1}>1 Month</MenuItem>
+                            <MenuItem value={3}>3 Months</MenuItem>
+                            <MenuItem value={6}>6 Months</MenuItem>
+                            <MenuItem value={9}>9 Months</MenuItem>
+                            <MenuItem value={12}>12 Months</MenuItem>
+                        </TextField>
+
+                        <TextField
+                            label="Amount (€)"
+                            type="number"
+                            fullWidth
+                            margin="normal"
+                            value={upgradeForm.amount}
+                            onChange={(e) => setUpgradeForm({ ...upgradeForm, amount: parseFloat(e.target.value) })}
+                            helperText="Amount is auto-filled based on pricing, but can be adjusted"
+                        />
+
+                        <TextField
+                            select
+                            label="Payment Method"
+                            fullWidth
+                            margin="normal"
+                            value={upgradeForm.payment_method}
+                            onChange={(e) => setUpgradeForm({ ...upgradeForm, payment_method: e.target.value })}
+                        >
+                            <MenuItem value="bank_transfer">Bank Transfer</MenuItem>
+                            <MenuItem value="cash">Cash</MenuItem>
+                            <MenuItem value="check">Check</MenuItem>
+                            <MenuItem value="other">Other</MenuItem>
+                        </TextField>
+
+                        <TextField
+                            label="Notes"
+                            multiline
+                            rows={3}
+                            fullWidth
+                            margin="normal"
+                            value={upgradeForm.notes}
+                            onChange={(e) => setUpgradeForm({ ...upgradeForm, notes: e.target.value })}
+                            placeholder="Add any notes about this payment..."
+                        />
+                    </Box>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-                    <Button onClick={handleCreateSubscription} variant="contained">Save</Button>
+                    <Button onClick={() => setOpenUpgradeDialog(false)} disabled={upgrading}>
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleManualUpgrade}
+                        variant="contained"
+                        disabled={upgrading}
+                    >
+                        {upgrading ? 'Processing...' : 'Upgrade Subscription'}
+                    </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Notification Snackbar */}
+            <Snackbar
+                open={notification.open}
+                autoHideDuration={6000}
+                onClose={() => setNotification({ ...notification, open: false })}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            >
+                <Alert
+                    onClose={() => setNotification({ ...notification, open: false })}
+                    severity={notification.severity}
+                    sx={{ width: '100%' }}
+                >
+                    {notification.message}
+                </Alert>
+            </Snackbar>
         </Container>
     );
 };
 
 export default MemberDetail;
+
