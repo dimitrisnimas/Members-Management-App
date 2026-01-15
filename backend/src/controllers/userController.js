@@ -436,7 +436,7 @@ const findDuplicates = async (req, res) => {
 };
 
 const mergeUsers = async (req, res) => {
-    const client = await require('../config/db').pool.connect();
+    const client = await require('../config/database').pool.connect();
     try {
         const { targetUserId, sourceUserId } = req.body;
 
@@ -476,9 +476,9 @@ const mergeUsers = async (req, res) => {
             [targetUserId, sourceUserId]
         );
 
-        // Transfer Action Logs (assuming table name is action_logs)
+        // Transfer Action Logs
         await client.query(
-            'UPDATE action_logs SET user_id = $1 WHERE user_id = $2',
+            'UPDATE action_history SET user_id = $1 WHERE user_id = $2',
             [targetUserId, sourceUserId]
         );
 
