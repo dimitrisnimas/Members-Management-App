@@ -262,6 +262,179 @@ const createMember = async (req, res) => {
     }
 };
 
+const changeRole = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { role } = req.body;
+
+        // Validate role
+        if (!['user', 'superadmin'].includes(role)) {
+            return res.status(400).json({ message: 'Invalid role. Must be "user" or "superadmin"' });
+        }
+
+        // Get current user
+        const userResult = await query('SELECT * FROM users WHERE id = $1', [id]);
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        const user = userResult.rows[0];
+
+        // If demoting from superadmin, check if this is the last superadmin
+        if (user.role === 'superadmin' && role === 'user') {
+            const superadminCount = await query(
+                'SELECT COUNT(*) as count FROM users WHERE role = $1',
+                ['superadmin']
+            );
+
+            if (parseInt(superadminCount.rows[0].count) <= 1) {
+                return res.status(400).json({
+                    message: 'Cannot demote the last superadmin. Please promote another user to superadmin first.'
+                });
+            }
+        }
+
+        // Update role
+        const result = await query(
+            'UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+            [role, id]
+        );
+
+        // Log action
+        const actionLogger = require('../services/actionLogger');
+        await actionLogger.logAction({
+            userId: id,
+            actionType: 'role_change',
+            actionDescription: `Role changed from ${user.role} to ${role}`,
+            performedBy: req.user.id,
+            metadata: {
+                old_role: user.role,
+                new_role: role
+            }
+        });
+
+        // Send notification email
+        try {
+            await emailService.sendRoleChangeNotification(result.rows[0], user.role, role);
+        } catch (emailError) {
+            console.error('Role change email failed:', emailError);
+            // Don't fail the request if email fails
+        }
+
+        res.json({
+            message: `User role successfully changed to ${role}`,
+            user: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Change role error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+const findDuplicates = async (req, res) => {
+    try {
+        const { type } = req.query; // 'email', 'name', 'id_number', or 'all'
+
+        const duplicates = {
+            emails: [],
+            names: [],
+            idNumbers: []
+        };
+
+        // Find duplicate emails
+        if (!type || type === 'email' || type === 'all') {
+            const emailDuplicates = await query(`
+                SELECT LOWER(email) as email, array_agg(id) as user_ids, COUNT(*) as count
+                FROM users
+                GROUP BY LOWER(email)
+                HAVING COUNT(*) > 1
+                ORDER BY count DESC
+            `);
+
+            duplicates.emails = emailDuplicates.rows.map(row => ({
+                value: row.email,
+                count: parseInt(row.count),
+                userIds: row.user_ids
+            }));
+        }
+
+        // Find duplicate ID numbers
+        if (!type || type === 'id_number' || type === 'all') {
+            const idDuplicates = await query(`
+                SELECT id_number, array_agg(id) as user_ids, COUNT(*) as count
+                FROM users
+                WHERE id_number IS NOT NULL AND id_number != ''
+                GROUP BY id_number
+                HAVING COUNT(*) > 1
+                ORDER BY count DESC
+            `);
+
+            duplicates.idNumbers = idDuplicates.rows.map(row => ({
+                value: row.id_number,
+                count: parseInt(row.count),
+                userIds: row.user_ids
+            }));
+        }
+
+        // Find potential duplicate names (exact match on full name)
+        if (!type || type === 'name' || type === 'all') {
+            const nameDuplicates = await query(`
+                SELECT 
+                    LOWER(TRIM(first_name || ' ' || last_name)) as full_name,
+                    array_agg(id) as user_ids,
+                    COUNT(*) as count
+                FROM users
+                GROUP BY LOWER(TRIM(first_name || ' ' || last_name))
+                HAVING COUNT(*) > 1
+                ORDER BY count DESC
+            `);
+
+            duplicates.names = nameDuplicates.rows.map(row => ({
+                value: row.full_name,
+                count: parseInt(row.count),
+                userIds: row.user_ids
+            }));
+        }
+
+        // Get user details for all duplicates
+        const allUserIds = [
+            ...duplicates.emails.flatMap(d => d.userIds),
+            ...duplicates.names.flatMap(d => d.userIds),
+            ...duplicates.idNumbers.flatMap(d => d.userIds)
+        ];
+
+        const uniqueUserIds = [...new Set(allUserIds)];
+
+        let userDetails = {};
+        if (uniqueUserIds.length > 0) {
+            const usersResult = await query(
+                `SELECT id, email, first_name, last_name, fathers_name, id_number, phone, member_type, status, created_at 
+                 FROM users 
+                 WHERE id = ANY($1)`,
+                [uniqueUserIds]
+            );
+
+            userDetails = usersResult.rows.reduce((acc, user) => {
+                acc[user.id] = user;
+                return acc;
+            }, {});
+        }
+
+        res.json({
+            duplicates,
+            userDetails,
+            summary: {
+                totalEmailDuplicates: duplicates.emails.length,
+                totalNameDuplicates: duplicates.names.length,
+                totalIdNumberDuplicates: duplicates.idNumbers.length,
+                totalAffectedUsers: uniqueUserIds.length
+            }
+        });
+    } catch (error) {
+        console.error('Find duplicates error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
 module.exports = {
     getAllUsers,
     getUserById,
@@ -271,5 +444,7 @@ module.exports = {
     updateUser,
     deleteUser,
     getExpiringMembers,
-    createMember
+    createMember,
+    changeRole,
+    findDuplicates
 };
