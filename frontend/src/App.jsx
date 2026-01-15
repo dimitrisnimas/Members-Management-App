@@ -12,6 +12,7 @@ import AdminTools from './pages/AdminTools';
 import ExportPDF from './pages/ExportPDF';
 import UserProfile from './pages/UserProfile';
 import MemberDetail from './pages/MemberDetail';
+import AddMember from './pages/AddMember';
 
 const PrivateRoute = ({ children, roles }) => {
   const { user, loading } = useAuth();
@@ -52,6 +53,14 @@ function App() {
             element={
               <PrivateRoute roles={['superadmin']}>
                 <AllMembers />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/add-member"
+            element={
+              <PrivateRoute roles={['superadmin']}>
+                <AddMember />
               </PrivateRoute>
             }
           />
